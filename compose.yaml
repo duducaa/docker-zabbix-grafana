@@ -1,0 +1,69 @@
+services:
+  zabbix-db:
+    container_name: zabbix-db
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - MYSQL_ROOT_PASSWORD=zabbix
+    ports:
+      - "3306:3306"
+    networks:
+      - zabbix-network
+    volumes:
+      - ./zabbix/mysql:/var/lib/data
+
+  zabbix-server:
+    container_name: zabbix-server
+    image: zabbix/zabbix-server-mysql:ubuntu-6.0-latest
+    environment:
+      - DB_SERVER_HOST=zabbix-db
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - MYSQL_ROOT_PASSWORD=zabbix
+    ports:
+      - "10051:10051"
+    networks:
+      - zabbix-network
+    volumes:
+      - ./zabbix/alerts:/usr/lib/zabbix/alerts
+    depends_on:
+      - zabbix-db
+
+  zabbix-web:
+    container_name: zabbix-web
+    image: zabbix/zabbix-web-apache-mysql:ubuntu-6.0-latest
+    environment:
+      - DB_SERVER_HOST=zabbix-db
+      - ZBX_SERVER_HOST=zabbix-server
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - MYSQL_ROOT_PASSWORD=zabbix
+      - PHP_TX=America/Sao_Paulo
+    ports:
+      - "80:8080"
+      - "443:8443"
+    networks:
+      - zabbix-network
+    depends_on:
+      - zabbix-db
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    environment:
+      - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-app
+    ports:
+      - "3000:3000"
+    networks:
+      - zabbix-network
+    depends_on:
+      - zabbix-db
+      - zabbix-server
+
+networks:
+  zabbix-network:
+    driver: bridge
